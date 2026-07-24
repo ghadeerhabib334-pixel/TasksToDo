@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "TasksToDo",
+  "short_name": "TasksToDo",
+  "description": "A field work map for pins, tasks, notes, and links.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#f4f6f8",
+  "theme_color": "#126b5b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "Icon/Icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
