@@ -4,17 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Field Work Map</title>
+  <title>TasksToDo</title>
+  <link rel="icon" type="image/png" href="Icon/Icon.png">
   <link rel="stylesheet" href="assets/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="toolbar">
-    <a class="brand" href="#" aria-label="Field Work Map home">
-      <span class="brand-mark">FW</span><span class="brand-name">Field Work</span>
+    <a class="brand" href="#" aria-label="TasksToDo home">
+      <img class="brand-mark" src="Icon/Icon.png" alt=""><span class="brand-name">TasksToDo</span>
     </a>
     <div class="toolbar-actions" role="toolbar" aria-label="Project actions">
       <button id="add-marker-btn" class="primary" type="button"><span aria-hidden="true">＋</span> Add Marker</button>
+      <button id="go-to-btn" type="button"><span aria-hidden="true">⌖</span> Go To</button>
       <button id="tasks-btn" type="button" aria-expanded="false" aria-controls="task-panel"><span aria-hidden="true">☑</span> Tasks <span id="task-count" class="count">0</span></button>
       <div class="search-wrap">
         <label class="sr-only" for="search-input">Search markers</label>
@@ -25,6 +27,14 @@
       <button id="save-btn" type="button"><span aria-hidden="true">⇩</span> Save</button>
       <button id="open-btn" type="button"><span aria-hidden="true">⇧</span> Open</button>
       <button id="settings-btn" class="icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
+      <button id="mobile-menu-btn" class="icon-button mobile-menu-button" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">☰</button>
+      <div id="mobile-menu" class="mobile-menu" hidden>
+        <button id="mobile-tasks-btn" type="button"><span aria-hidden="true">☑</span> Tasks</button>
+        <button id="mobile-go-to-btn" type="button"><span aria-hidden="true">⌖</span> Go To</button>
+        <button id="mobile-save-btn" type="button"><span aria-hidden="true">⇩</span> Save</button>
+        <button id="mobile-open-btn" type="button"><span aria-hidden="true">⇧</span> Open</button>
+        <button id="mobile-settings-btn" type="button"><span aria-hidden="true">⚙</span> Settings</button>
+      </div>
       <input id="file-input" type="file" accept="application/json,.json" hidden>
     </div>
   </header>
@@ -62,6 +72,7 @@
       <div class="modal-header"><div><p class="eyebrow">LOCATION DETAILS</p><h2 id="marker-dialog-title">Add marker</h2></div><button class="icon-button close-dialog" type="button" aria-label="Close">×</button></div>
       <div class="form-grid">
         <label class="wide">Name <input id="marker-name" name="name" required maxlength="100" placeholder="e.g. Cabinet A"></label>
+        <label>Pin character <input id="marker-symbol" name="symbol" required maxlength="1" pattern="[A-Za-z0-9]" placeholder="A" autocomplete="off" title="Enter one letter or number"></label>
         <label>Coordinates <input id="marker-coordinates" readonly></label>
         <label class="wide">Notes <textarea id="marker-notes" name="notes" rows="4" maxlength="4000" placeholder="Site access, contacts, observations…"></textarea></label>
       </div>
@@ -70,6 +81,13 @@
       <p id="marker-form-error" class="form-error" role="alert"></p>
       <div class="modal-actions"><button class="secondary close-dialog" type="button">Cancel</button><button class="primary" type="submit">Save marker</button></div>
     </form>
+  </dialog>
+
+  <dialog id="go-to-dialog" class="modal small">
+    <div class="dialog-content">
+      <div class="modal-header"><div><p class="eyebrow">MAP LOCATIONS</p><h2>Go To</h2></div><button class="icon-button close-dialog" type="button" aria-label="Close">×</button></div>
+      <div id="pin-list" class="pin-list"></div>
+    </div>
   </dialog>
 
   <dialog id="settings-dialog" class="modal small">

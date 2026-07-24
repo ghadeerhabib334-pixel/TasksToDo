@@ -4,7 +4,7 @@
   const STORAGE_KEY = 'field-work-map-project-v1';
   const ROMANIA_VIEW = { center: [45.9432, 24.9668], zoom: 7 };
   const TYPES = ['Camera', 'Radar', 'Cabinet', 'Switch', 'Fiber', 'Other'];
-  const TYPE_SYMBOLS = { Camera: 'C', Radar: 'R', Cabinet: 'B', Switch: 'S', Fiber: 'F', Other: '•' };
+  const TYPE_SYMBOLS = { Camera: 'C', Radar: 'R', Cabinet: 'B', Switch: 'S', Fiber: 'F', Other: 'P' };
   const SAFE_PROTOCOLS = new Set(['http:', 'https:']);
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -19,12 +19,15 @@
   });
 
   const elements = {
-    addMarker: $('#add-marker-btn'), tasks: $('#tasks-btn'), taskPanel: $('#task-panel'), closeTasks: $('#close-tasks'),
+    addMarker: $('#add-marker-btn'), goTo: $('#go-to-btn'), goToDialog: $('#go-to-dialog'), pinList: $('#pin-list'),
+    tasks: $('#tasks-btn'), taskPanel: $('#task-panel'), closeTasks: $('#close-tasks'),
     taskCount: $('#task-count'), remainingCount: $('#remaining-count'), completedCount: $('#completed-count'),
     globalTasks: $('#global-task-list'), taskSort: $('#task-sort'), search: $('#search-input'), searchResults: $('#search-results'),
     save: $('#save-btn'), open: $('#open-btn'), file: $('#file-input'), settings: $('#settings-btn'),
+    mobileMenuButton: $('#mobile-menu-btn'), mobileMenu: $('#mobile-menu'), mobileTasks: $('#mobile-tasks-btn'),
+    mobileGoTo: $('#mobile-go-to-btn'), mobileSave: $('#mobile-save-btn'), mobileOpen: $('#mobile-open-btn'), mobileSettings: $('#mobile-settings-btn'),
     placementBanner: $('#placement-banner'), cancelPlacement: $('#cancel-placement'), markerDialog: $('#marker-dialog'),
-    markerForm: $('#marker-form'), markerTitle: $('#marker-dialog-title'), markerName: $('#marker-name'),
+    markerForm: $('#marker-form'), markerTitle: $('#marker-dialog-title'), markerName: $('#marker-name'), markerSymbol: $('#marker-symbol'),
     markerCoordinates: $('#marker-coordinates'), markerNotes: $('#marker-notes'), taskEditor: $('#task-editor'),
     linkEditor: $('#link-editor'), addTask: $('#add-task-row'), addLink: $('#add-link-row'), markerError: $('#marker-form-error'),
     settingsDialog: $('#settings-dialog'), theme: $('#theme-select'), useCurrentView: $('#use-current-view'),
@@ -65,6 +68,8 @@
       if (!name || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) throw new Error(`Marker ${index + 1} has an invalid name or coordinates.`);
       let id = String(raw.id ?? uid()); if (seenMarkers.has(id)) id = uid(); seenMarkers.add(id);
       const type = TYPES.includes(raw.type) ? raw.type : 'Other';
+      const legacySymbol = TYPE_SYMBOLS[type];
+      const symbol = /^[A-Za-z0-9]$/.test(String(raw.symbol ?? '').trim()) ? String(raw.symbol).trim().toUpperCase() : legacySymbol;
       const taskIds = new Set(); const linkIds = new Set();
       const tasks = (Array.isArray(raw.tasks) ? raw.tasks : []).map((task) => {
         const title = String(task?.title ?? '').trim(); if (!title) return null;
@@ -76,7 +81,7 @@
         let linkId = String(link.id ?? uid()); if (linkIds.has(linkId)) linkId = uid(); linkIds.add(linkId);
         return { id: linkId, title, url };
       }).filter(Boolean);
-      return { id, name, type, lat, lng, notes: String(raw.notes ?? ''), links, tasks };
+      return { id, name, type, symbol, lat, lng, notes: String(raw.notes ?? ''), links, tasks };
     });
     return project;
   }
@@ -113,7 +118,7 @@
   function iconFor(marker) {
     return L.divIcon({
       className: 'field-marker', iconSize: [36, 42], iconAnchor: [18, 39], popupAnchor: [0, -38],
-      html: `<div class="marker-pin" style="--marker-color:${markerColor(marker)}"><span>${TYPE_SYMBOLS[marker.type]}</span></div>`
+      html: `<div class="marker-pin" style="--marker-color:${markerColor(marker)}"><span>${escapeHtml(marker.symbol)}</span></div>`
     });
   }
 
@@ -138,7 +143,7 @@
   function popupHtml(marker) {
     const tasks = marker.tasks.length ? marker.tasks.map((task) => `<label class="popup-task"><input type="checkbox" data-task-id="${escapeAttr(task.id)}" ${task.completed ? 'checked' : ''}><span>${escapeHtml(task.title)}</span></label>`).join('') : '<span class="popup-type">No tasks yet</span>';
     const links = marker.links.length ? marker.links.map((link) => `<a href="${escapeAttr(link.url)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(link.title)}</a>`).join('') : '';
-    return `<div class="popup-head"><span class="type-badge">${TYPE_SYMBOLS[marker.type]}</span><div><h3>${escapeHtml(marker.name)}</h3><span class="popup-type">${escapeHtml(marker.type)}</span></div></div>
+    return `<div class="popup-head"><span class="type-badge">${escapeHtml(marker.symbol)}</span><div><h3>${escapeHtml(marker.name)}</h3><span class="popup-type">${escapeHtml(marker.type)}</span></div></div>
       <div class="popup-section"><h4>Tasks</h4>${tasks}</div>
       ${marker.notes ? `<div class="popup-section"><h4>Notes</h4><div class="popup-notes">${escapeHtml(marker.notes)}</div></div>` : ''}
       ${links ? `<div class="popup-section"><h4>Links</h4><div class="popup-links">${links}</div></div>` : ''}
@@ -180,7 +185,7 @@
     if (!matches.length) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.textContent = 'No locations found.'; elements.searchResults.append(empty); }
     matches.forEach((marker) => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'search-result'; button.setAttribute('role', 'option');
-      const badge = document.createElement('span'); badge.className = 'type-badge'; badge.textContent = TYPE_SYMBOLS[marker.type];
+      const badge = document.createElement('span'); badge.className = 'type-badge'; badge.textContent = marker.symbol;
       const copy = document.createElement('span'); const name = document.createElement('strong'); name.textContent = marker.name; const type = document.createElement('small'); type.textContent = marker.type; copy.append(name, type); button.append(badge, copy);
       button.addEventListener('click', () => { focusMarker(marker.id); elements.search.value = ''; closeSearch(); }); elements.searchResults.append(button);
     });
@@ -188,6 +193,24 @@
   }
 
   function closeSearch() { elements.searchResults.hidden = true; elements.search.setAttribute('aria-expanded', 'false'); }
+
+  function renderPinList() {
+    elements.pinList.replaceChildren();
+    const markers = [...state.markers].sort((a, b) => a.name.localeCompare(b.name));
+    if (!markers.length) {
+      const empty = document.createElement('div'); empty.className = 'empty-state'; empty.textContent = 'No pins yet. Add a marker to get started.'; elements.pinList.append(empty); return;
+    }
+    markers.forEach((marker) => {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'pin-list-item';
+      const badge = document.createElement('span'); badge.className = 'type-badge'; badge.textContent = marker.symbol;
+      const copy = document.createElement('span'); const name = document.createElement('strong'); name.textContent = marker.name;
+      const coordinates = document.createElement('small'); coordinates.textContent = `${marker.lat.toFixed(5)}, ${marker.lng.toFixed(5)}`;
+      copy.append(name, coordinates); button.append(badge, copy);
+      button.addEventListener('click', () => { elements.goToDialog.close(); focusMarker(marker.id); });
+      elements.pinList.append(button);
+    });
+  }
+
   function renderAll() { renderMarkers(); renderTasks(); if (elements.search.value) renderSearch(); }
 
   function toggleTask(markerId, taskId, completed) {
@@ -208,7 +231,7 @@
   function openMarkerEditor(markerId = null, latlng = null) {
     const marker = markerId ? state.markers.find((item) => item.id === markerId) : null;
     editorContext = { markerId, lat: marker?.lat ?? latlng.lat, lng: marker?.lng ?? latlng.lng, type: marker?.type ?? 'Other' };
-    elements.markerTitle.textContent = marker ? 'Edit marker' : 'Add marker'; elements.markerName.value = marker?.name ?? ''; elements.markerNotes.value = marker?.notes ?? '';
+    elements.markerTitle.textContent = marker ? 'Edit marker' : 'Add marker'; elements.markerName.value = marker?.name ?? ''; elements.markerSymbol.value = marker?.symbol ?? ''; elements.markerNotes.value = marker?.notes ?? '';
     elements.markerCoordinates.value = `${editorContext.lat.toFixed(6)}, ${editorContext.lng.toFixed(6)}`; elements.markerError.textContent = '';
     elements.taskEditor.replaceChildren(); (marker?.tasks ?? []).forEach(addTaskRow); elements.linkEditor.replaceChildren(); (marker?.links ?? []).forEach(addLinkRow);
     elements.markerDialog.showModal(); setTimeout(() => elements.markerName.focus(), 30);
@@ -230,10 +253,11 @@
 
   function collectEditor() {
     const name = elements.markerName.value.trim(); if (!name) throw new Error('Enter a marker name.');
+    const symbol = elements.markerSymbol.value.trim().toUpperCase(); if (!/^[A-Z0-9]$/.test(symbol)) throw new Error('Enter one letter or number for the pin.');
     const tasks = $$('.editor-row', elements.taskEditor).map((row) => ({ id: row.dataset.id || uid(), completed: $('input[type="checkbox"]', row).checked, title: $('input[type="text"]', row).value.trim() })).filter((task) => task.title);
     const links = $$('.link-row', elements.linkEditor).map((row) => { const inputs = $$('input', row); return { id: row.dataset.id || uid(), title: inputs[0].value.trim(), url: inputs[1].value.trim() }; }).filter((link) => link.title || link.url);
     for (const link of links) { if (!link.title || !link.url) throw new Error('Each link needs both a title and a URL.'); if (!isSafeUrl(link.url)) throw new Error(`“${link.title}” uses an unsafe or invalid URL.`); }
-    return { id: editorContext.markerId || uid(), name, type: editorContext.type, lat: editorContext.lat, lng: editorContext.lng, notes: elements.markerNotes.value.trim(), tasks, links };
+    return { id: editorContext.markerId || uid(), name, type: editorContext.type, symbol, lat: editorContext.lat, lng: editorContext.lng, notes: elements.markerNotes.value.trim(), tasks, links };
   }
 
   function requestDelete(markerId) {
@@ -243,6 +267,8 @@
   }
 
   function setTaskPanel(open) { elements.taskPanel.classList.toggle('open', open); elements.taskPanel.setAttribute('aria-hidden', String(!open)); elements.tasks.setAttribute('aria-expanded', String(open)); }
+  function setMobileMenu(open) { elements.mobileMenu.hidden = !open; elements.mobileMenuButton.setAttribute('aria-expanded', String(open)); }
+  function openGoTo() { renderPinList(); elements.goToDialog.showModal(); }
   function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'system' ? '' : theme; }
   function updateStartupLabel() { const view = state.settings.startupView; elements.startupViewLabel.textContent = `${view.center[0].toFixed(4)}, ${view.center[1].toFixed(4)} · zoom ${view.zoom}`; }
 
@@ -267,14 +293,21 @@
   function toast(message, duration = 2600) { const node = document.createElement('div'); node.className = 'toast'; node.textContent = message; elements.toastRegion.append(node); setTimeout(() => node.remove(), duration); }
 
   elements.addMarker.addEventListener('click', () => placementMode ? stopPlacement() : startPlacement());
+  elements.goTo.addEventListener('click', openGoTo);
   elements.cancelPlacement.addEventListener('click', stopPlacement);
   map.on('click', (event) => { if (!placementMode) return; stopPlacement(); openMarkerEditor(null, event.latlng); });
   map.on('moveend', () => { const center = map.getCenter(); state.map = { center: [center.lat, center.lng], zoom: map.getZoom() }; persist({ render: false }); });
   elements.tasks.addEventListener('click', () => setTaskPanel(!elements.taskPanel.classList.contains('open'))); elements.closeTasks.addEventListener('click', () => setTaskPanel(false));
+  elements.mobileMenuButton.addEventListener('click', () => setMobileMenu(elements.mobileMenu.hidden));
+  elements.mobileTasks.addEventListener('click', () => { setMobileMenu(false); setTaskPanel(true); });
+  elements.mobileGoTo.addEventListener('click', () => { setMobileMenu(false); openGoTo(); });
+  elements.mobileSave.addEventListener('click', () => { setMobileMenu(false); downloadProject(); });
+  elements.mobileOpen.addEventListener('click', () => { setMobileMenu(false); elements.file.click(); });
+  elements.mobileSettings.addEventListener('click', () => { setMobileMenu(false); elements.theme.value = state.settings.theme; updateStartupLabel(); elements.settingsDialog.showModal(); });
   $$('.segments button').forEach((button) => button.addEventListener('click', () => { taskFilter = button.dataset.filter; $$('.segments button').forEach((item) => item.classList.toggle('active', item === button)); renderTasks(); }));
   elements.taskSort.addEventListener('change', renderTasks); elements.search.addEventListener('input', renderSearch);
   elements.search.addEventListener('keydown', (event) => { if (event.key === 'Escape') { elements.search.value = ''; closeSearch(); } if (event.key === 'ArrowDown') { event.preventDefault(); $('.search-result', elements.searchResults)?.focus(); } });
-  document.addEventListener('click', (event) => { if (!event.target.closest('.search-wrap')) closeSearch(); });
+  document.addEventListener('click', (event) => { if (!event.target.closest('.search-wrap')) closeSearch(); if (!event.target.closest('.mobile-menu') && !event.target.closest('.mobile-menu-button')) setMobileMenu(false); });
   elements.addTask.addEventListener('click', () => addTaskRow()); elements.addLink.addEventListener('click', () => addLinkRow());
   elements.markerForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -288,7 +321,7 @@
   elements.theme.addEventListener('change', () => { state.settings.theme = elements.theme.value; applyTheme(state.settings.theme); persist({ render: false }); });
   elements.useCurrentView.addEventListener('click', () => { const center = map.getCenter(); state.settings.startupView = { center: [center.lat, center.lng], zoom: map.getZoom() }; updateStartupLabel(); persist({ render: false }); toast('Startup view updated.'); });
   elements.resetDefaultView.addEventListener('click', () => { state.settings.startupView = clone(ROMANIA_VIEW); updateStartupLabel(); persist({ render: false }); toast('Romania startup view restored.'); });
-  window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && placementMode) stopPlacement(); });
+  window.addEventListener('keydown', (event) => { if (event.key === 'Escape') { if (placementMode) stopPlacement(); setMobileMenu(false); } });
 
   renderAll();
 })();
