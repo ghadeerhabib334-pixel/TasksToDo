@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="Icon/Icon.png?v=2">
   <link rel="manifest" href="manifest.webmanifest?v=1">
   <link rel="stylesheet" href="assets/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <header class="toolbar">
@@ -48,6 +48,7 @@
 
   <main>
     <div id="map" aria-label="Interactive field work map"></div>
+    <button id="locate-btn" class="map-control-button" type="button" aria-label="Show my location" title="Show my location">◎</button>
     <div id="placement-banner" class="placement-banner" hidden>
       Click the map to place a marker <button id="cancel-placement" type="button">Cancel</button>
     </div>
@@ -113,6 +114,6 @@
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script src="assets/leaflet/leaflet.js"></script>
-  <script src="script.js?v=2" defer></script>
+  <script src="script.js?v=3" defer></script>
 </body>
 </html>

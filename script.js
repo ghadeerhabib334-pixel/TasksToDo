@@ -26,7 +26,7 @@
     save: $('#save-btn'), open: $('#open-btn'), file: $('#file-input'), settings: $('#settings-btn'),
     mobileMenuButton: $('#mobile-menu-btn'), mobileMenu: $('#mobile-menu'), mobileTasks: $('#mobile-tasks-btn'),
     mobileGoTo: $('#mobile-go-to-btn'), mobileSave: $('#mobile-save-btn'), mobileOpen: $('#mobile-open-btn'), mobileSettings: $('#mobile-settings-btn'),
-    placementBanner: $('#placement-banner'), cancelPlacement: $('#cancel-placement'), markerDialog: $('#marker-dialog'),
+    placementBanner: $('#placement-banner'), cancelPlacement: $('#cancel-placement'), markerDialog: $('#marker-dialog'), locate: $('#locate-btn'),
     markerForm: $('#marker-form'), markerTitle: $('#marker-dialog-title'), markerName: $('#marker-name'), markerSymbol: $('#marker-symbol'),
     markerCoordinates: $('#marker-coordinates'), markerNotes: $('#marker-notes'), taskEditor: $('#task-editor'),
     linkEditor: $('#link-editor'), addTask: $('#add-task-row'), addLink: $('#add-link-row'), markerError: $('#marker-form-error'),
@@ -40,6 +40,8 @@
   let placementMode = false;
   let editorContext = null;
   let taskFilter = 'all';
+  let userLocationMarker = null;
+  let userAccuracyCircle = null;
 
   applyTheme(state.settings.theme);
   const map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView(state.map.center, state.map.zoom);
@@ -223,6 +225,26 @@
     map.setView([marker.lat, marker.lng], Math.max(map.getZoom(), 16), { animate: true }); setTimeout(() => layer.openPopup(), 260);
   }
 
+  function showMyLocation() {
+    if (!navigator.geolocation) { toast('Location is not supported by this browser.'); return; }
+    elements.locate.classList.add('locating'); elements.locate.setAttribute('aria-label', 'Finding your location');
+    map.locate({ setView: true, maxZoom: 17, enableHighAccuracy: true, timeout: 15000 });
+  }
+
+  map.on('locationfound', (event) => {
+    elements.locate.classList.remove('locating'); elements.locate.setAttribute('aria-label', 'Show my location');
+    if (userLocationMarker) map.removeLayer(userLocationMarker);
+    if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+    userAccuracyCircle = L.circle(event.latlng, { radius: event.accuracy, color: '#1677d2', weight: 1, fillColor: '#5ca9ef', fillOpacity: .13 }).addTo(map);
+    userLocationMarker = L.circleMarker(event.latlng, { radius: 8, color: '#fff', weight: 3, fillColor: '#1677d2', fillOpacity: 1 }).addTo(map).bindPopup('You are here');
+    userLocationMarker.openPopup();
+  });
+
+  map.on('locationerror', (event) => {
+    elements.locate.classList.remove('locating'); elements.locate.setAttribute('aria-label', 'Show my location');
+    toast(event.code === 1 ? 'Location permission was denied.' : 'Could not determine your location.', 4000);
+  });
+
   function startPlacement() {
     placementMode = true; elements.placementBanner.hidden = false; elements.addMarker.classList.add('active'); map.getContainer().style.cursor = 'crosshair'; map.closePopup();
   }
@@ -293,6 +315,7 @@
   function toast(message, duration = 2600) { const node = document.createElement('div'); node.className = 'toast'; node.textContent = message; elements.toastRegion.append(node); setTimeout(() => node.remove(), duration); }
 
   elements.addMarker.addEventListener('click', () => placementMode ? stopPlacement() : startPlacement());
+  elements.locate.addEventListener('click', showMyLocation);
   elements.goTo.addEventListener('click', openGoTo);
   elements.cancelPlacement.addEventListener('click', stopPlacement);
   map.on('click', (event) => { if (!placementMode) return; stopPlacement(); openMarkerEditor(null, event.latlng); });
