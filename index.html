@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Field Work Map</title>
+  <link rel="stylesheet" href="assets/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="toolbar">
+    <a class="brand" href="#" aria-label="Field Work Map home">
+      <span class="brand-mark">FW</span><span class="brand-name">Field Work</span>
+    </a>
+    <div class="toolbar-actions" role="toolbar" aria-label="Project actions">
+      <button id="add-marker-btn" class="primary" type="button"><span aria-hidden="true">＋</span> Add Marker</button>
+      <button id="tasks-btn" type="button" aria-expanded="false" aria-controls="task-panel"><span aria-hidden="true">☑</span> Tasks <span id="task-count" class="count">0</span></button>
+      <div class="search-wrap">
+        <label class="sr-only" for="search-input">Search markers</label>
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="search-input" type="search" placeholder="Search locations…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+        <div id="search-results" class="search-results" role="listbox" hidden></div>
+      </div>
+      <button id="save-btn" type="button"><span aria-hidden="true">⇩</span> Save</button>
+      <button id="open-btn" type="button"><span aria-hidden="true">⇧</span> Open</button>
+      <button id="settings-btn" class="icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
+      <input id="file-input" type="file" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <main>
+    <div id="map" aria-label="Interactive field work map"></div>
+    <div id="placement-banner" class="placement-banner" hidden>
+      Click the map to place a marker <button id="cancel-placement" type="button">Cancel</button>
+    </div>
+    <aside id="task-panel" class="task-panel" aria-label="Global tasks" aria-hidden="true">
+      <div class="panel-header">
+        <div><p class="eyebrow">PROJECT OVERVIEW</p><h2>Tasks</h2></div>
+        <button id="close-tasks" class="icon-button" type="button" aria-label="Close task panel">×</button>
+      </div>
+      <div class="task-summary">
+        <div><strong id="remaining-count">0</strong><span>Remaining</span></div>
+        <div><strong id="completed-count">0</strong><span>Completed</span></div>
+      </div>
+      <div class="panel-controls">
+        <div class="segments" role="group" aria-label="Task filter">
+          <button type="button" data-filter="all" class="active">All</button>
+          <button type="button" data-filter="remaining">Remaining</button>
+          <button type="button" data-filter="completed">Completed</button>
+        </div>
+        <label>Sort
+          <select id="task-sort"><option value="marker">Marker name</option><option value="type">Location type</option></select>
+        </label>
+      </div>
+      <div id="global-task-list" class="global-task-list"></div>
+    </aside>
+  </main>
+
+  <dialog id="marker-dialog" class="modal">
+    <form id="marker-form" method="dialog">
+      <div class="modal-header"><div><p class="eyebrow">LOCATION DETAILS</p><h2 id="marker-dialog-title">Add marker</h2></div><button class="icon-button close-dialog" type="button" aria-label="Close">×</button></div>
+      <div class="form-grid">
+        <label class="wide">Name <input id="marker-name" name="name" required maxlength="100" placeholder="e.g. Cabinet A"></label>
+        <label>Coordinates <input id="marker-coordinates" readonly></label>
+        <label class="wide">Notes <textarea id="marker-notes" name="notes" rows="4" maxlength="4000" placeholder="Site access, contacts, observations…"></textarea></label>
+      </div>
+      <section class="editor-section"><div class="section-heading"><h3>Tasks</h3><button id="add-task-row" class="text-button" type="button">＋ Add task</button></div><div id="task-editor" class="row-editor"></div></section>
+      <section class="editor-section"><div class="section-heading"><h3>Links</h3><button id="add-link-row" class="text-button" type="button">＋ Add link</button></div><div id="link-editor" class="row-editor"></div></section>
+      <p id="marker-form-error" class="form-error" role="alert"></p>
+      <div class="modal-actions"><button class="secondary close-dialog" type="button">Cancel</button><button class="primary" type="submit">Save marker</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog" class="modal small">
+    <form id="settings-form" method="dialog">
+      <div class="modal-header"><div><p class="eyebrow">PREFERENCES</p><h2>Settings</h2></div><button class="icon-button close-dialog" type="button" aria-label="Close">×</button></div>
+      <label>Theme <select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+      <div class="setting-block"><h3>Startup map view</h3><p>Choose what appears when starting a new project.</p><div class="button-row"><button id="use-current-view" type="button">Use current view</button><button id="reset-default-view" type="button">Restore Romania</button></div><small id="startup-view-label"></small></div>
+      <div class="modal-actions"><button class="primary close-dialog" type="button">Done</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dialog" class="modal small">
+    <form method="dialog"><div class="modal-header"><h2>Delete marker?</h2></div><p id="confirm-message">This location and all of its tasks will be removed.</p><div class="modal-actions"><button value="cancel" class="secondary">Cancel</button><button value="confirm" class="danger">Delete</button></div></form>
+  </dialog>
+
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="assets/leaflet/leaflet.js"></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
