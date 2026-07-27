@@ -168,8 +168,12 @@
     const completed = all.filter(({ task }) => task.completed).length;
     elements.taskCount.textContent = String(all.length - completed); elements.remainingCount.textContent = String(all.length - completed); elements.completedCount.textContent = String(completed);
     const filtered = all.filter(({ task }) => taskFilter === 'all' || (taskFilter === 'completed' ? task.completed : !task.completed));
-    const key = elements.taskSort.value === 'type' ? 'type' : 'name';
-    filtered.sort((a, b) => a.marker[key].localeCompare(b.marker[key]) || a.task.title.localeCompare(b.task.title));
+    const sort = elements.taskSort.value;
+    filtered.sort((a, b) => {
+      if (sort === 'task') return a.task.title.localeCompare(b.task.title) || a.marker.name.localeCompare(b.marker.name);
+      const key = sort === 'type' ? 'type' : 'name';
+      return a.marker[key].localeCompare(b.marker[key]) || a.task.title.localeCompare(b.task.title);
+    });
     elements.globalTasks.replaceChildren();
     if (!filtered.length) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.textContent = all.length ? 'No tasks match this filter.' : 'No tasks yet. Add a marker to get started.'; elements.globalTasks.append(empty); return; }
     filtered.forEach(({ marker, task }) => {
@@ -186,13 +190,28 @@
   function renderSearch() {
     const query = elements.search.value.trim().toLocaleLowerCase();
     if (!query) { closeSearch(); return; }
-    const matches = state.markers.filter((marker) => marker.name.toLocaleLowerCase().includes(query) || marker.type.toLocaleLowerCase().includes(query)).slice(0, 12);
+    const matches = state.markers.filter((marker) => {
+      const coordinates = [
+        `${marker.lat}, ${marker.lng}`,
+        `${marker.lat},${marker.lng}`,
+        `${marker.lat.toFixed(5)}, ${marker.lng.toFixed(5)}`,
+        `${marker.lat.toFixed(5)},${marker.lng.toFixed(5)}`
+      ];
+      return marker.name.toLocaleLowerCase().includes(query)
+        || marker.type.toLocaleLowerCase().includes(query)
+        || marker.symbol.toLocaleLowerCase().includes(query)
+        || coordinates.some((value) => value.toLocaleLowerCase().includes(query))
+        || marker.tasks.some((task) => task.title.toLocaleLowerCase().includes(query) || task.details.toLocaleLowerCase().includes(query));
+    }).slice(0, 12);
     elements.searchResults.replaceChildren();
     if (!matches.length) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.textContent = 'No locations found.'; elements.searchResults.append(empty); }
     matches.forEach((marker) => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'search-result'; button.setAttribute('role', 'option');
       const badge = document.createElement('span'); badge.className = 'type-badge'; badge.textContent = marker.symbol;
-      const copy = document.createElement('span'); const name = document.createElement('strong'); name.textContent = marker.name; const type = document.createElement('small'); type.textContent = marker.type; copy.append(name, type); button.append(badge, copy);
+      const matchingTask = marker.tasks.find((task) => task.title.toLocaleLowerCase().includes(query) || task.details.toLocaleLowerCase().includes(query));
+      const copy = document.createElement('span'); const name = document.createElement('strong'); name.textContent = marker.name; const type = document.createElement('small');
+      type.textContent = matchingTask ? `Task: ${matchingTask.title}` : `${marker.type} · ${marker.lat.toFixed(5)}, ${marker.lng.toFixed(5)}`;
+      copy.append(name, type); button.append(badge, copy);
       button.addEventListener('click', () => { focusMarker(marker.id); elements.search.value = ''; closeSearch(); }); elements.searchResults.append(button);
     });
     elements.searchResults.hidden = false; elements.search.setAttribute('aria-expanded', 'true');
@@ -221,6 +240,8 @@
 
   function toggleTask(markerId, taskId, completed) {
     const marker = state.markers.find((item) => item.id === markerId); const task = marker?.tasks.find((item) => item.id === taskId); if (!task) return;
+    const action = completed ? 'complete' : 'reactivate';
+    if (!window.confirm(`Are you sure you want to ${action} “${task.title}”?`)) { renderAll(); return; }
     task.completed = completed; persist();
   }
 
@@ -281,6 +302,11 @@
     const input = document.createElement('input'); input.type = 'text'; input.maxLength = 180; input.placeholder = 'Task title'; input.value = task.title;
     const details = document.createElement('textarea'); details.maxLength = 4000; details.rows = 3; details.placeholder = 'Task details (optional)'; details.value = task.details ?? '';
     const fields = document.createElement('div'); fields.className = 'task-fields'; fields.append(input, details);
+    checkbox.addEventListener('change', () => {
+      const title = input.value.trim() || 'this task';
+      const action = checkbox.checked ? 'complete' : 'reactivate';
+      if (!window.confirm(`Are you sure you want to ${action} “${title}”?`)) checkbox.checked = !checkbox.checked;
+    });
     const remove = removeButton('Remove task', () => row.remove()); row.append(checkbox, fields, remove); elements.taskEditor.append(row); if (!task.title) input.focus();
   }
   function addLinkRow(link = { id: uid(), title: '', url: '' }) {

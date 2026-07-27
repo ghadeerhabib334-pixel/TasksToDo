@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#126b5b">
   <meta name="mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="Icon/Icon.png?v=2">
   <link rel="manifest" href="manifest.webmanifest?v=1">
   <link rel="stylesheet" href="assets/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <header class="toolbar">
@@ -26,9 +26,9 @@
       <button id="go-to-btn" type="button"><span aria-hidden="true">⌖</span> Go To</button>
       <button id="tasks-btn" type="button" aria-expanded="false" aria-controls="task-panel"><span aria-hidden="true">☑</span> Tasks <span id="task-count" class="count">0</span></button>
       <div class="search-wrap">
-        <label class="sr-only" for="search-input">Search markers</label>
+        <label class="sr-only" for="search-input">Search pins, tasks, or coordinates</label>
         <span class="search-icon" aria-hidden="true">⌕</span>
-        <input id="search-input" type="search" placeholder="Search locations…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+        <input id="search-input" type="search" placeholder="Search pins, tasks, coordinates…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
         <div id="search-results" class="search-results" role="listbox" hidden></div>
       </div>
       <button id="save-btn" type="button"><span aria-hidden="true">⇩</span> Save</button>
@@ -68,7 +68,7 @@
           <button type="button" data-filter="completed">Completed</button>
         </div>
         <label>Sort
-          <select id="task-sort"><option value="marker">Marker name</option><option value="type">Location type</option></select>
+          <select id="task-sort"><option value="marker">Marker name</option><option value="task">Task name</option><option value="type">Location type</option></select>
         </label>
       </div>
       <div id="global-task-list" class="global-task-list"></div>
@@ -123,6 +123,6 @@
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script src="assets/leaflet/leaflet.js"></script>
-  <script src="script.js?v=4" defer></script>
+  <script src="script.js?v=5" defer></script>
 </body>
 </html>
