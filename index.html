@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="Icon/Icon.png?v=2">
   <link rel="manifest" href="manifest.webmanifest?v=1">
   <link rel="stylesheet" href="assets/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <header class="toolbar">
@@ -80,7 +80,7 @@
       <div class="modal-header"><div><p class="eyebrow">LOCATION DETAILS</p><h2 id="marker-dialog-title">Add marker</h2></div><button class="icon-button close-dialog" type="button" aria-label="Close">×</button></div>
       <div class="form-grid">
         <label class="wide">Name <input id="marker-name" name="name" required maxlength="100" placeholder="e.g. Cabinet A"></label>
-        <label>Pin character <input id="marker-symbol" name="symbol" required maxlength="1" pattern="[A-Za-z0-9]" placeholder="A" autocomplete="off" title="Enter one letter or number"></label>
+        <label>Pin simbol <input id="marker-symbol" name="symbol" required maxlength="12" placeholder="e.g. C2" autocomplete="off" title="Enter up to 12 characters"></label>
         <label>Coordinates <input id="marker-coordinates" readonly></label>
         <label class="wide">Notes <textarea id="marker-notes" name="notes" rows="4" maxlength="4000" placeholder="Site access, contacts, observations…"></textarea></label>
       </div>
@@ -89,6 +89,15 @@
       <p id="marker-form-error" class="form-error" role="alert"></p>
       <div class="modal-actions"><button class="secondary close-dialog" type="button">Cancel</button><button class="primary" type="submit">Save marker</button></div>
     </form>
+  </dialog>
+
+  <dialog id="task-detail-dialog" class="modal small">
+    <div class="dialog-content">
+      <div class="modal-header"><div><p class="eyebrow">TASK DETAILS</p><h2 id="task-detail-title"></h2></div><button class="icon-button close-dialog" type="button" aria-label="Close">×</button></div>
+      <p id="task-detail-location" class="task-detail-location"></p>
+      <div id="task-detail-text" class="task-detail-text"></div>
+      <div class="modal-actions"><button id="task-detail-map" type="button">Show on map</button><button class="primary close-dialog" type="button">Done</button></div>
+    </div>
   </dialog>
 
   <dialog id="go-to-dialog" class="modal small">
@@ -114,6 +123,6 @@
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script src="assets/leaflet/leaflet.js"></script>
-  <script src="script.js?v=3" defer></script>
+  <script src="script.js?v=4" defer></script>
 </body>
 </html>

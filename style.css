@@ -85,6 +85,8 @@ textarea { resize:vertical; }
 .text-button { color:var(--accent); border:0; background:transparent; padding:5px; font-weight:700; }
 .row-editor { display:grid; gap:8px; margin-top:9px; }
 .editor-row { display:grid; grid-template-columns:auto 1fr auto; gap:7px; align-items:center; }
+.task-fields { display:grid; gap:7px; }
+.task-fields textarea { min-height:70px; }
 .editor-row.link-row { grid-template-columns:1fr 1.5fr auto; }
 .editor-row input[type="checkbox"] { accent-color:var(--accent); }
 .remove-row { border:0; color:var(--danger); font-size:19px; padding:5px 8px; }
@@ -103,7 +105,7 @@ textarea { resize:vertical; }
 @keyframes toast-in { from { transform:translateY(8px); opacity:0; } }
 .field-marker { background:transparent; border:0; }
 .marker-pin { --marker-color:#d84747; position:relative; width:36px; height:36px; display:grid; place-items:center; color:white; background:var(--marker-color); border:3px solid white; border-radius:50% 50% 50% 8px; transform:rotate(-45deg); box-shadow:0 3px 8px rgba(0,0,0,.35); }
-.marker-pin span { transform:rotate(45deg); font-size:16px; font-weight:800; }
+.marker-pin span { width:29px; overflow:hidden; transform:rotate(45deg); font-size:12px; font-weight:800; line-height:1; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--surface); color:var(--text); }
 .leaflet-popup-content { min-width:230px; margin:15px; }
 .popup-head { display:flex; gap:9px; align-items:flex-start; margin-bottom:12px; }
@@ -111,7 +113,13 @@ textarea { resize:vertical; }
 .type-badge { width:34px; height:34px; flex:none; display:grid; place-items:center; border-radius:9px; background:var(--accent-soft); }
 .popup-section { padding:10px 0; border-top:1px solid var(--border); }
 .popup-section h4 { margin:0 0 7px; font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:.07em; }
-.popup-task { display:flex; align-items:flex-start; gap:7px; margin:6px 0; }.popup-task input { margin-top:2px; accent-color:var(--accent); }
+.popup-task { display:flex; align-items:flex-start; gap:7px; margin:6px 0; }.popup-task input { margin-top:5px; accent-color:var(--accent); }
+.popup-task button { padding:2px 0; border:0; background:transparent; text-align:left; }
+.popup-task button:hover { color:var(--accent); background:transparent; }
+.popup-task .done { text-decoration:line-through; color:var(--muted); }
+.task-detail-location { margin:-10px 0 18px; color:var(--muted); font-size:13px; }
+.task-detail-text { min-height:90px; padding:14px; border-radius:11px; background:var(--surface-2); white-space:pre-wrap; line-height:1.5; }
+.task-detail-text.empty { color:var(--muted); font-style:italic; }
 .popup-notes { white-space:pre-wrap; line-height:1.45; font-size:13px; }
 .popup-links { display:grid; gap:5px; }.popup-links a { color:var(--accent); }
 .popup-actions { display:flex; gap:7px; padding-top:10px; }.popup-actions button { flex:1; padding:7px; font-size:12px; }.popup-actions .delete { color:var(--danger); }

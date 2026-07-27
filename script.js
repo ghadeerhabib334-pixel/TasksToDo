@@ -30,6 +30,8 @@
     markerForm: $('#marker-form'), markerTitle: $('#marker-dialog-title'), markerName: $('#marker-name'), markerSymbol: $('#marker-symbol'),
     markerCoordinates: $('#marker-coordinates'), markerNotes: $('#marker-notes'), taskEditor: $('#task-editor'),
     linkEditor: $('#link-editor'), addTask: $('#add-task-row'), addLink: $('#add-link-row'), markerError: $('#marker-form-error'),
+    taskDetailDialog: $('#task-detail-dialog'), taskDetailTitle: $('#task-detail-title'), taskDetailLocation: $('#task-detail-location'),
+    taskDetailText: $('#task-detail-text'), taskDetailMap: $('#task-detail-map'),
     settingsDialog: $('#settings-dialog'), theme: $('#theme-select'), useCurrentView: $('#use-current-view'),
     resetDefaultView: $('#reset-default-view'), startupViewLabel: $('#startup-view-label'), confirm: $('#confirm-dialog'),
     confirmMessage: $('#confirm-message'), toastRegion: $('#toast-region')
@@ -71,12 +73,13 @@
       let id = String(raw.id ?? uid()); if (seenMarkers.has(id)) id = uid(); seenMarkers.add(id);
       const type = TYPES.includes(raw.type) ? raw.type : 'Other';
       const legacySymbol = TYPE_SYMBOLS[type];
-      const symbol = /^[A-Za-z0-9]$/.test(String(raw.symbol ?? '').trim()) ? String(raw.symbol).trim().toUpperCase() : legacySymbol;
+      const rawSymbol = String(raw.symbol ?? '').trim();
+      const symbol = rawSymbol && rawSymbol.length <= 12 ? rawSymbol : legacySymbol;
       const taskIds = new Set(); const linkIds = new Set();
       const tasks = (Array.isArray(raw.tasks) ? raw.tasks : []).map((task) => {
         const title = String(task?.title ?? '').trim(); if (!title) return null;
         let taskId = String(task.id ?? uid()); if (taskIds.has(taskId)) taskId = uid(); taskIds.add(taskId);
-        return { id: taskId, title, completed: Boolean(task.completed) };
+        return { id: taskId, title, details: String(task.details ?? '').trim(), completed: Boolean(task.completed) };
       }).filter(Boolean);
       const links = (Array.isArray(raw.links) ? raw.links : []).map((link) => {
         const title = String(link?.title ?? '').trim(); const url = String(link?.url ?? '').trim(); if (!title || !url || !isSafeUrl(url)) return null;
@@ -143,7 +146,7 @@
   }
 
   function popupHtml(marker) {
-    const tasks = marker.tasks.length ? marker.tasks.map((task) => `<label class="popup-task"><input type="checkbox" data-task-id="${escapeAttr(task.id)}" ${task.completed ? 'checked' : ''}><span>${escapeHtml(task.title)}</span></label>`).join('') : '<span class="popup-type">No tasks yet</span>';
+    const tasks = marker.tasks.length ? marker.tasks.map((task) => `<div class="popup-task"><input type="checkbox" data-task-id="${escapeAttr(task.id)}" ${task.completed ? 'checked' : ''} aria-label="Mark ${escapeAttr(task.title)} ${task.completed ? 'remaining' : 'completed'}"><button type="button" data-task-details="${escapeAttr(task.id)}" class="${task.completed ? 'done' : ''}">${escapeHtml(task.title)}</button></div>`).join('') : '<span class="popup-type">No tasks yet</span>';
     const links = marker.links.length ? marker.links.map((link) => `<a href="${escapeAttr(link.url)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(link.title)}</a>`).join('') : '';
     return `<div class="popup-head"><span class="type-badge">${escapeHtml(marker.symbol)}</span><div><h3>${escapeHtml(marker.name)}</h3><span class="popup-type">${escapeHtml(marker.type)}</span></div></div>
       <div class="popup-section"><h4>Tasks</h4>${tasks}</div>
@@ -155,6 +158,7 @@
   function bindPopupActions(markerId, layer) {
     const root = layer.getPopup().getElement(); if (!root) return;
     $$('[data-task-id]', root).forEach((input) => input.addEventListener('change', () => toggleTask(markerId, input.dataset.taskId, input.checked)));
+    $$('[data-task-details]', root).forEach((button) => button.addEventListener('click', () => openTaskDetails(markerId, button.dataset.taskDetails)));
     $('[data-action="edit"]', root)?.addEventListener('click', () => openMarkerEditor(markerId));
     $('[data-action="delete"]', root)?.addEventListener('click', () => requestDelete(markerId));
   }
@@ -174,7 +178,7 @@
       const jump = document.createElement('button'); jump.type = 'button';
       const title = document.createElement('span'); title.textContent = task.title; if (task.completed) title.className = 'done';
       const location = document.createElement('small'); location.textContent = `⌖ ${marker.name} · ${marker.type}`; jump.append(title, location); row.append(checkbox, jump);
-      checkbox.addEventListener('change', () => toggleTask(marker.id, task.id, checkbox.checked)); jump.addEventListener('click', () => focusMarker(marker.id));
+      checkbox.addEventListener('change', () => toggleTask(marker.id, task.id, checkbox.checked)); jump.addEventListener('click', () => openTaskDetails(marker.id, task.id));
       elements.globalTasks.append(row);
     });
   }
@@ -225,6 +229,18 @@
     map.setView([marker.lat, marker.lng], Math.max(map.getZoom(), 16), { animate: true }); setTimeout(() => layer.openPopup(), 260);
   }
 
+  function openTaskDetails(markerId, taskId) {
+    const marker = state.markers.find((item) => item.id === markerId);
+    const task = marker?.tasks.find((item) => item.id === taskId);
+    if (!marker || !task) return;
+    elements.taskDetailTitle.textContent = task.title;
+    elements.taskDetailLocation.textContent = `${marker.name} · ${marker.type}`;
+    elements.taskDetailText.textContent = task.details || 'No details added.';
+    elements.taskDetailText.classList.toggle('empty', !task.details);
+    elements.taskDetailMap.onclick = () => { elements.taskDetailDialog.close(); setTaskPanel(false); focusMarker(marker.id); };
+    elements.taskDetailDialog.showModal();
+  }
+
   function showMyLocation() {
     if (!navigator.geolocation) { toast('Location is not supported by this browser.'); return; }
     elements.locate.classList.add('locating'); elements.locate.setAttribute('aria-label', 'Finding your location');
@@ -259,11 +275,13 @@
     elements.markerDialog.showModal(); setTimeout(() => elements.markerName.focus(), 30);
   }
 
-  function addTaskRow(task = { id: uid(), title: '', completed: false }) {
+  function addTaskRow(task = { id: uid(), title: '', details: '', completed: false }) {
     const row = document.createElement('div'); row.className = 'editor-row'; row.dataset.id = task.id;
     const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = task.completed; checkbox.setAttribute('aria-label', 'Task completed');
     const input = document.createElement('input'); input.type = 'text'; input.maxLength = 180; input.placeholder = 'Task title'; input.value = task.title;
-    const remove = removeButton('Remove task', () => row.remove()); row.append(checkbox, input, remove); elements.taskEditor.append(row); if (!task.title) input.focus();
+    const details = document.createElement('textarea'); details.maxLength = 4000; details.rows = 3; details.placeholder = 'Task details (optional)'; details.value = task.details ?? '';
+    const fields = document.createElement('div'); fields.className = 'task-fields'; fields.append(input, details);
+    const remove = removeButton('Remove task', () => row.remove()); row.append(checkbox, fields, remove); elements.taskEditor.append(row); if (!task.title) input.focus();
   }
   function addLinkRow(link = { id: uid(), title: '', url: '' }) {
     const row = document.createElement('div'); row.className = 'editor-row link-row'; row.dataset.id = link.id;
@@ -275,8 +293,8 @@
 
   function collectEditor() {
     const name = elements.markerName.value.trim(); if (!name) throw new Error('Enter a marker name.');
-    const symbol = elements.markerSymbol.value.trim().toUpperCase(); if (!/^[A-Z0-9]$/.test(symbol)) throw new Error('Enter one letter or number for the pin.');
-    const tasks = $$('.editor-row', elements.taskEditor).map((row) => ({ id: row.dataset.id || uid(), completed: $('input[type="checkbox"]', row).checked, title: $('input[type="text"]', row).value.trim() })).filter((task) => task.title);
+    const symbol = elements.markerSymbol.value.trim(); if (!symbol || symbol.length > 12) throw new Error('Enter a pin simbol of up to 12 characters.');
+    const tasks = $$('.editor-row', elements.taskEditor).map((row) => ({ id: row.dataset.id || uid(), completed: $('input[type="checkbox"]', row).checked, title: $('input[type="text"]', row).value.trim(), details: $('textarea', row).value.trim() })).filter((task) => task.title);
     const links = $$('.link-row', elements.linkEditor).map((row) => { const inputs = $$('input', row); return { id: row.dataset.id || uid(), title: inputs[0].value.trim(), url: inputs[1].value.trim() }; }).filter((link) => link.title || link.url);
     for (const link of links) { if (!link.title || !link.url) throw new Error('Each link needs both a title and a URL.'); if (!isSafeUrl(link.url)) throw new Error(`“${link.title}” uses an unsafe or invalid URL.`); }
     return { id: editorContext.markerId || uid(), name, type: editorContext.type, symbol, lat: editorContext.lat, lng: editorContext.lng, notes: elements.markerNotes.value.trim(), tasks, links };
