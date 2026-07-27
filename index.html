@@ -120,9 +120,17 @@
     <form method="dialog"><div class="modal-header"><h2>Delete marker?</h2></div><p id="confirm-message">This location and all of its tasks will be removed.</p><div class="modal-actions"><button value="cancel" class="secondary">Cancel</button><button value="confirm" class="danger">Delete</button></div></form>
   </dialog>
 
+  <dialog id="task-confirm-dialog" class="modal small">
+    <form method="dialog">
+      <div class="modal-header"><h2 id="task-confirm-title">Change task status?</h2></div>
+      <p id="task-confirm-message"></p>
+      <div class="modal-actions"><button value="cancel" class="secondary">Cancel</button><button id="task-confirm-action" value="confirm" class="primary">Confirm</button></div>
+    </form>
+  </dialog>
+
   <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script src="assets/leaflet/leaflet.js"></script>
-  <script src="script.js?v=5" defer></script>
+  <script src="script.js?v=6" defer></script>
 </body>
 </html>

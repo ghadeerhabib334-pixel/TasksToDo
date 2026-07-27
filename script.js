@@ -34,7 +34,8 @@
     taskDetailText: $('#task-detail-text'), taskDetailMap: $('#task-detail-map'),
     settingsDialog: $('#settings-dialog'), theme: $('#theme-select'), useCurrentView: $('#use-current-view'),
     resetDefaultView: $('#reset-default-view'), startupViewLabel: $('#startup-view-label'), confirm: $('#confirm-dialog'),
-    confirmMessage: $('#confirm-message'), toastRegion: $('#toast-region')
+    confirmMessage: $('#confirm-message'), taskConfirm: $('#task-confirm-dialog'), taskConfirmTitle: $('#task-confirm-title'),
+    taskConfirmMessage: $('#task-confirm-message'), taskConfirmAction: $('#task-confirm-action'), toastRegion: $('#toast-region')
   };
 
   let state = loadLocalProject();
@@ -188,7 +189,8 @@
   }
 
   function renderSearch() {
-    const query = elements.search.value.trim().toLocaleLowerCase();
+    const rawQuery = elements.search.value.trim();
+    const query = rawQuery.toLocaleLowerCase();
     if (!query) { closeSearch(); return; }
     const matches = state.markers.filter((marker) => {
       const coordinates = [
@@ -201,6 +203,7 @@
         || marker.type.toLocaleLowerCase().includes(query)
         || marker.symbol.toLocaleLowerCase().includes(query)
         || coordinates.some((value) => value.toLocaleLowerCase().includes(query))
+        || matchesCoordinateQuery(marker, rawQuery)
         || marker.tasks.some((task) => task.title.toLocaleLowerCase().includes(query) || task.details.toLocaleLowerCase().includes(query));
     }).slice(0, 12);
     elements.searchResults.replaceChildren();
@@ -218,6 +221,20 @@
   }
 
   function closeSearch() { elements.searchResults.hidden = true; elements.search.setAttribute('aria-expanded', 'false'); }
+
+  function matchesCoordinateQuery(marker, query) {
+    const text = query.replace(/[′’]/g, "'").replace(/[″”]/g, '"');
+    const pattern = /(\d{1,3})\s*\u00B0\s*(\d{1,2})\s*'\s*(\d{1,2}(?:\.\d+)?)\s*"?\s*([NS])[\s,;]+(\d{1,3})\s*\u00B0\s*(\d{1,2})\s*'\s*(\d{1,2}(?:\.\d+)?)\s*"?\s*([EW])/i;
+    const match = text.match(pattern);
+    if (!match) return false;
+    const toDecimal = (degrees, minutes, seconds, direction) => {
+      const value = Number(degrees) + Number(minutes) / 60 + Number(seconds) / 3600;
+      return /[SW]/i.test(direction) ? -value : value;
+    };
+    const lat = toDecimal(match[1], match[2], match[3], match[4]);
+    const lng = toDecimal(match[5], match[6], match[7], match[8]);
+    return Math.abs(marker.lat - lat) <= 0.00002 && Math.abs(marker.lng - lng) <= 0.00002;
+  }
 
   function renderPinList() {
     elements.pinList.replaceChildren();
@@ -238,11 +255,22 @@
 
   function renderAll() { renderMarkers(); renderTasks(); if (elements.search.value) renderSearch(); }
 
-  function toggleTask(markerId, taskId, completed) {
+  async function toggleTask(markerId, taskId, completed) {
     const marker = state.markers.find((item) => item.id === markerId); const task = marker?.tasks.find((item) => item.id === taskId); if (!task) return;
-    const action = completed ? 'complete' : 'reactivate';
-    if (!window.confirm(`Are you sure you want to ${action} “${task.title}”?`)) { renderAll(); return; }
+    if (!await confirmTaskChange(task.title, completed)) { renderAll(); return; }
     task.completed = completed; persist();
+  }
+
+  function confirmTaskChange(taskTitle, completed) {
+    const action = completed ? 'Complete' : 'Reactivate';
+    elements.taskConfirmTitle.textContent = `${action} task?`;
+    elements.taskConfirmMessage.textContent = `Are you sure you want to ${action.toLocaleLowerCase()} “${taskTitle}”?`;
+    elements.taskConfirmAction.textContent = action;
+    elements.taskConfirm.returnValue = '';
+    elements.taskConfirm.showModal();
+    return new Promise((resolve) => {
+      elements.taskConfirm.addEventListener('close', () => resolve(elements.taskConfirm.returnValue === 'confirm'), { once: true });
+    });
   }
 
   function focusMarker(markerId) {
@@ -302,10 +330,9 @@
     const input = document.createElement('input'); input.type = 'text'; input.maxLength = 180; input.placeholder = 'Task title'; input.value = task.title;
     const details = document.createElement('textarea'); details.maxLength = 4000; details.rows = 3; details.placeholder = 'Task details (optional)'; details.value = task.details ?? '';
     const fields = document.createElement('div'); fields.className = 'task-fields'; fields.append(input, details);
-    checkbox.addEventListener('change', () => {
+    checkbox.addEventListener('change', async () => {
       const title = input.value.trim() || 'this task';
-      const action = checkbox.checked ? 'complete' : 'reactivate';
-      if (!window.confirm(`Are you sure you want to ${action} “${title}”?`)) checkbox.checked = !checkbox.checked;
+      if (!await confirmTaskChange(title, checkbox.checked)) checkbox.checked = !checkbox.checked;
     });
     const remove = removeButton('Remove task', () => row.remove()); row.append(checkbox, fields, remove); elements.taskEditor.append(row); if (!task.title) input.focus();
   }
